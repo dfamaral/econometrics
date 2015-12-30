@@ -34,16 +34,18 @@ fm  <-  VAS ~ DEF3 +
 		Psoja1 + Psoja2 + CO2soja + Pmilho1 + Pmilho2 + CO2milho + Parroz1 + Parroz2 + CO2arroz +
 		Pmad1 + Pmad2 + Reb1 + Reb2 + DPPCD1 + DPPCD2 + DPPCD3 + DMP + DMS1 + QAI1
 
+fe <- plm(fm, data = tb, model = "within") # Painel de efeitos fixos
+
+re <- plm(fm, data = tb, model = "random", random.method = "amemiya") # Painel de efeitos aleatórios
+
+ht <- phtest(fe, re) # Hausman Test: reject H0 and choose FE
+
+print(ht)
+
 testSAR   <- bsjktest(fm, data = tb, listw = W, test = "C.1")
 testSEM   <- bsjktest(fm, data = tb, listw = W, test = "C.2")
 print(testSAR)
 print(testSEM)
-
-# Pooling
-pols  <- plm(fm,  data = tb, model = "pooling")
-
-# Fixed Effects
-ef <- plm(fm, data = tb, model = "within")
 
 # Fixed Effects with SLM
 efsar <- spml(fm, data = tb, index = "Cod_mun", listw = W,
