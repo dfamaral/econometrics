@@ -1,0 +1,118 @@
+## I am trying to run a spatial econometrics Panel model, but I still cannot run it
+## Operation system is Windows 7, 64 bit, R Studion version 0.99.489, splm package 1.3-7
+## The problem is that I get an error message when I:
+## 1) Try to obtain the log-Likelihood of the function;
+## 2) Use slag operator;
+## 3) Calculate SEM impacts.
+
+## This is a reproducible example:
+
+# Loading libraries
+library(spdep)
+library(maptools)
+gpclibPermit()
+library(maptools)
+library(rgdal)
+library(splm)
+methods(impacts)
+library(plm)
+library(ggplot2)
+
+# Reading shape and showing basic attributes
+AL <- readOGR(dsn=".", "MT_PA_RO_muni")
+names(AL)
+plot(AL)
+coords <- coordinates(AL)
+
+# Creating a weighting matrix type "Queen" with row standardization
+contnb <- poly2nb(AL, queen = TRUE)
+str(contnb)
+W <- nb2listw(contnb, glist = NULL, style = "W")
+attributes(W)
+
+fm  <-  VAS ~ DEF3 +
+		Psoja1 + Psoja2 + CO2soja + Pmilho1 + Pmilho2 + CO2milho + Parroz1 + Parroz2 + CO2arroz +
+		Pmad1 + Pmad2 + Reb1 + Reb2 + DPPCD1 + DPPCD2 + DPPCD3 + DMP + DMS1 + QAI1
+
+testSAR   <- bsjktest(fm, data = tb, listw = W, test = "C.1")
+testSEM   <- bsjktest(fm, data = tb, listw = W, test = "C.2")
+print(testSAR)
+print(testSEM)
+
+# Pooling
+pols  <- plm(fm,  data = tb, model = "pooling")
+
+# Fixed Effects
+ef <- plm(fm, data = tb, model = "within")
+
+# Fixed Effects with SLM
+efsar <- spml(fm, data = tb, index = "Cod_mun", listw = W,
+        model = "within", spatial.error = "none", lag = TRUE, quiet = FALSE)
+
+## This is the output: function value stops at -34124.73
+
+# Spatial Lag Fixed Effects Model 
+
+# Spatial fixed effects model
+#  Jacobian calculated using neighbourhood matrix eigenvalues
+# Computing eigenvalues ...
+# lambda:	 -0.6888346 	function value:	 -34420.4 
+# lambda:	 -0.04375717 	function value:	 -34128.91 
+# lambda:	 0.3549226 	function value:	 -34187.14 
+# lambda:	 0.02810863 	function value:	 -34124.81 
+# lambda:	 0.03807652 	function value:	 -34124.73
+# ...
+# lambda:	 0.04016975 	function value:	 -34124.73
+
+# Fixed Effects with SEM
+efsem <- spml(fm, data = tb, index = "Cod_mun", listw = W,
+        model = "within", spatial.error = "b", lag = FALSE, quiet = FALSE)
+
+## This is the output:
+
+#  Spatial Error Fixed Effects Model
+
+# Spatial fixed effects model
+# Jacobian calculated using neighbourhood matrix eigenvalues
+# Computing eigenvalues ...
+
+# rho: -0.6888346  function: -34397.08  Jacobian: -12.21995  SSE: 21730867498 
+# rho: -0.04375717  function: -34128.11  Jacobian: -0.05232653  SSE: 19617942434 
+# rho: 0.3549226  function: -34189.55  Jacobian: -3.872996  SSE: 19937098667 
+# rho: 0.01474067  function: -34125.36  Jacobian: -0.006013063  SSE: 19586889090 
+# rho: 0.02518409  function: -34125.28  Jacobian: -0.01759334  SSE: 19584158510 
+# rho: 0.02719396  function: -34125.27  Jacobian: -0.02052307  SSE: 19583730830
+# ...
+# rho: 0.02713026  function: -34125.27  Jacobian: -0.02042673  SSE: 19583743901
+
+summary(pols)
+summary(ef)
+summary.splm(efsar)
+summary(efsem)
+
+# Calculating direct, indirect and total impacts
+mW <- listw2dgCMatrix(W)
+sW <- kronecker(Diagonal(time), mW)
+trMatc <- trW(sW, type = "mult")
+
+impsar <- impacts(efsar, tr = trMatc, R = 200)
+impsem <- impacts(efsem, tr = trMatc, R = 200)
+
+# Error in impacts.splm(efsem, tr = trMatc, R = 200): object type not recognized
+
+summary(impsar, zstats = TRUE, short = TRUE)
+summary(impsem, zstats = TRUE, short = TRUE)
+
+## If I add slags to the regressors, the program says:
+
+# fm  <-  VAS ~ DEF3 +
+#         Psoja1 + Psoja2 + CO2soja + Pmilho1 + Pmilho2 + CO2milho + Parroz1 + Parroz2 + CO2arroz +
+#         Pmad1 + Pmad2 + Reb1 + Reb2 + DPPCD1 + DPPCD2 + DPPCD3 + DMP + DMS1 + QAI1 +
+#         slag(DEF3, listw = W) +
+#         slag(Psoja1, listw = W) + slag(Psoja2, listw = W) + slag(CO2soja, listw = W) +
+#         slag(Pmilho1, listw = W) + slag(Pmilho2, listw = W) + slag(CO2milho, listw = W) +
+#         slag(Parroz1, listw = W) + slag(Parroz2, listw = W) + slag(CO2arroz, listw = W) +
+#         slag(Pmad1, listw = W) + slag(Pmad2, listw = W) + slag(Reb1, listw = W) +
+#         slag(Reb2, listw = W) + slag(DMP, listw = W) + slag(DMS1, listw = W) + slag(QAI1, listw = W)
+
+# Error in UseMethod("slag"): no applicable method for 'slag' applied to an object of class "c('double', 'numeric')"
