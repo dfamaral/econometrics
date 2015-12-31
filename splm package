@@ -2,8 +2,7 @@
 ## Operation system is Windows 7, 64 bit, R Studion version 0.99.489, splm package 1.3-7
 ## The problem is that I get an error message when I:
 ## 1) Try to obtain the log-Likelihood of the function;
-## 2) Use slag operator;
-## 3) Calculate SEM impacts.
+## 2) Use slag operator.
 
 ## This is a reproducible example:
 
@@ -98,12 +97,7 @@ sW <- kronecker(Diagonal(time), mW)
 trMatc <- trW(sW, type = "mult")
 
 impsar <- impacts(efsar, tr = trMatc, R = 200)
-impsem <- impacts(efsem, tr = trMatc, R = 200)
-
-# Error in impacts.splm(efsem, tr = trMatc, R = 200): object type not recognized
-
 summary(impsar, zstats = TRUE, short = TRUE)
-summary(impsem, zstats = TRUE, short = TRUE)
 
 ## If I add slags to the regressors, the program says:
 
